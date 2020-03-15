@@ -1,2 +1,4 @@
 add_subdirectory(gradient_rect)
 add_subdirectory(jpeg_compress)
+add_subdirectory(lab03)
+add_subdirectory(control01)
