@@ -28,15 +28,23 @@ int main()
     }
     imshow("1 histogram", histImg);
 
-    // 2) применяем функцию к яркости картинки и выводим новую гистограмму
-    array<uchar, 256> lut; //lookup table
+    // 2) создание функции преобразования яркости и построение lookup table
+    array<uchar, 256> lut;
     for (int i = 0; i < 256; i += 1)
     {
         lut.at(i) = 255 - i;//pow(i, 0.8);
     }
+    Mat graph = Mat(400, 256, CV_8UC3, Scalar(0, 0, 0));;
+    for (int i = 1; i < 256; i++)
+    {
+        line(graph, Point(i - 1, lut[i - 1]), Point(i, lut[i]), 250, 1, 4, 0);
+    }
+    imshow("2 graph of lut", graph);
+
+    // 3) применяем функцию к яркости картинки и выводим новую гистограмму
     Mat img1;
     LUT(img, lut, img1);
-    imshow("2 image", img1);
+    imshow("3 image after changing intensity", img1);
     array<int, 256> ar_hist1 = {};
     for (int i = 0; i < img.rows; i += 1)
     {
@@ -50,16 +58,17 @@ int main()
     {
         line(hist1, Point(i - 1, ar_hist1[i - 1]), Point(i, ar_hist1[i]), 250, 1, 4, 0);
     }
-    imshow("2 histogram", hist1);
+    imshow("3 histogram", hist1);
 
 
-    // 3) применяем clahe
+    // 4) применяем clahe
     Mat clahe_img;
     Ptr<CLAHE> clahe = createCLAHE();
     cvtColor(img, img, COLOR_BGR2GRAY);
     clahe->setClipLimit(2);
+    clahe->setTilesGridSize(Size(8, 8));
     clahe->apply(img, clahe_img);
-    imshow("3 clahe", clahe_img);
+    imshow("4 clahe 2 (8,8)", clahe_img);
 
     array<int, 256> ar_hist_cl = {};
     for (int i = 0; i < img.rows; i += 1)
@@ -70,14 +79,50 @@ int main()
         }
     }
     Mat histImgCl = Mat(400, 256, CV_8UC3, Scalar(0, 0, 0));
-
     for (int i = 1; i < 256; i++)
     {
-        line(histImgCl, Point(i - 1, ar_hist_cl[i - 1]), Point(i, ar_hist_cl[i]), 250, 1, 4, 0);
+        line(histImgCl, Point(i - 1, ar_hist_cl[i - 1]), Point(i, ar_hist_cl[i]), Scalar(255, 0, 0), 1, 4, 0);
     }
-    imshow("3 clahe histogram", histImgCl);
+    
+    clahe->setClipLimit(0.5);
+    clahe->setTilesGridSize(Size(8, 8));
+    clahe->apply(img, clahe_img);
+    imshow("4 clahe 0.5 (8,8)", clahe_img);
 
-    // 4) глобальная бинаризация, метод Оцу
+    ar_hist_cl = {};
+    for (int i = 0; i < img.rows; i += 1)
+    {
+        for (int j = 0; j < img.cols; j += 1)
+        {
+            ar_hist_cl.at(clahe_img.at<uchar>(i, j)) += 1;
+        }
+    }
+    for (int i = 1; i < 256; i++)
+    {
+        line(histImgCl, Point(i - 1, ar_hist_cl[i - 1]), Point(i, ar_hist_cl[i]), Scalar(0, 255, 0), 1, 4, 0);
+    }
+
+    clahe->setClipLimit(2);
+    clahe->setTilesGridSize(Size(20, 20));
+    clahe->apply(img, clahe_img);
+    imshow("4 clahe 2 (20,20)", clahe_img);
+
+    ar_hist_cl = {};
+    for (int i = 0; i < img.rows; i += 1)
+    {
+        for (int j = 0; j < img.cols; j += 1)
+        {
+            ar_hist_cl.at(clahe_img.at<uchar>(i, j)) += 1;
+        }
+    }
+    for (int i = 1; i < 256; i++)
+    {
+        line(histImgCl, Point(i - 1, ar_hist_cl[i - 1]), Point(i, ar_hist_cl[i]), Scalar(0, 0, 255), 1, 4, 0);
+    }
+
+    imshow("4 clahe histograms", histImgCl);
+
+    // 5) глобальная бинаризация, метод Оцу
     float disp_otsu, w1, w2, a, max = 0;
     int m = 0, n = 0, alpha1 = 0, beta1 = 0, thresh = 0;
     for (int t = 0; t < 256; t += 1)
@@ -113,10 +158,10 @@ int main()
                 img_otsu.at<uchar>(i, j) = 0;
         }
     }
-    imshow("4 otsu method", img_otsu);
+    imshow("5 otsu method", img_otsu);
 
 
-    // 5) локальная бинаризация, метод Ниблэка
+    // 6) локальная бинаризация, метод Ниблэка
 
     Mat imgf;
     img.convertTo(imgf, CV_32F, 1 / 255.0);    
@@ -149,20 +194,18 @@ int main()
         }
     }
 
-    imshow("5 niblack method", niblack);
+    imshow("6 niblack method", niblack);
 
-    // 6 морфологии
-    Mat open, close;
-    morphologyEx(img_otsu, close, MORPH_CLOSE, Mat(), Point(-1,1), 1, 0);
-    imshow("close", close);
+    // 7) морфологии
+    Mat open;
     morphologyEx(img_otsu, open, MORPH_OPEN, Mat(), Point(-1, 1), 1, 0);
-    imshow("open", open);
+    imshow("7 opening on otsu", open);
 
-    // 7 альфа-блендинг
+    // 8) альфа-блендинг
     double alpha = 0.5;
     Mat alpha_blend;
     addWeighted(img, alpha, open, 1 - alpha, 0.0, alpha_blend);
-    imshow("7 alpha blending", alpha_blend);
+    imshow("8 alpha blending", alpha_blend);
     
 
 

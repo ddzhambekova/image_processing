@@ -57,13 +57,6 @@ int main()
     kernel1.at<float>(2, 1) = 0;
     kernel1.at<float>(2, 2) = -1;
 
-    for (int i = 0; i < kernel1.rows; i += 1)
-    {
-        for (int j = 0; j < kernel1.cols; j += 1)
-        {
-            kernel1.at<float>(i, j) /= 8.0;
-        }
-    }
 
     filter2D(resf, res1, -1, kernel1, Point(-1,-1), 0, BORDER_DEFAULT);
     res1 += 4.0;
